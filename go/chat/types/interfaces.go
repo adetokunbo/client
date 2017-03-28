@@ -75,3 +75,20 @@ type InboxSource interface {
 	SetRemoteInterface(func() chat1.RemoteInterface)
 	SetTLFInfoSource(tlfInfoSource TLFInfoSource)
 }
+
+type ServerCacheVersions interface {
+	Set(ctx context.Context, vers chat1.ServerCacheVers) error
+	MatchBodies(ctx context.Context, vers int) (int, error)
+	MatchInbox(ctx context.Context, vers int) (int, error)
+	Fetch(ctx context.Context) (chat1.ServerCacheVers, error)
+}
+
+type Syncer interface {
+	Connected(ctx context.Context, cli chat1.RemoteInterface, uid gregor1.UID) error
+	Disconnected(ctx context.Context)
+	Sync(ctx context.Context, cli chat1.RemoteInterface, uid gregor1.UID) error
+	RegisterOfflinable(offlinable Offlinable)
+	SendChatStaleNotifications(ctx context.Context, uid gregor1.UID, convIDs []chat1.ConversationID,
+		immediate bool)
+	Shutdown()
+}

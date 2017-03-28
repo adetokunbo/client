@@ -150,6 +150,8 @@ func (h *chatLocalHandler) GetInboxNonblockLocal(ctx context.Context, arg chat1.
 }
 
 func (h *chatLocalHandler) MarkAsReadLocal(ctx context.Context, arg chat1.MarkAsReadLocalArg) (res chat1.MarkAsReadRes, err error) {
+	var identBreaks []keybase1.TLFIdentifyFailure
+	ctx = chat.Context(ctx, keybase1.TLFIdentifyBehavior_CHAT_GUI, &identBreaks, h.identNotifier)
 	defer h.Trace(ctx, func() error { return err }, "MarkAsReadLocal")()
 	if err = h.assertLoggedIn(ctx); err != nil {
 		return chat1.MarkAsReadRes{}, err
@@ -476,7 +478,7 @@ func (h *chatLocalHandler) makeFirstMessage(ctx context.Context, triple chat1.Co
 		}
 	}
 
-	sender := chat.NewBlockingSender(h.G(), h.boxer, h.store, h.remoteClient, h.getSecretUI)
+	sender := chat.NewBlockingSender(h.G(), h.boxer, h.store, h.remoteClient)
 	mbox, _, err := sender.Prepare(ctx, msg, nil)
 	return mbox, err
 }
@@ -740,7 +742,7 @@ func (h *chatLocalHandler) PostLocal(ctx context.Context, arg chat1.PostLocalArg
 	arg.Msg.ClientHeader.Sender = uid.ToBytes()
 	arg.Msg.ClientHeader.SenderDevice = gregor1.DeviceID(db)
 
-	sender := chat.NewBlockingSender(h.G(), h.boxer, h.store, h.remoteClient, h.getSecretUI)
+	sender := chat.NewBlockingSender(h.G(), h.boxer, h.store, h.remoteClient)
 
 	_, msgID, rl, err := sender.Send(ctx, arg.ConversationID, arg.Msg, 0)
 	if err != nil {
@@ -843,7 +845,7 @@ func (h *chatLocalHandler) PostLocalNonblock(ctx context.Context, arg chat1.Post
 	}
 
 	// Create non block sender
-	sender := chat.NewBlockingSender(h.G(), h.boxer, h.store, h.remoteClient, h.getSecretUI)
+	sender := chat.NewBlockingSender(h.G(), h.boxer, h.store, h.remoteClient)
 	nonblockSender := chat.NewNonblockingSender(h.G(), sender)
 
 	obid, _, rl, err := nonblockSender.Send(ctx, arg.ConversationID, arg.Msg, arg.ClientPrev)
@@ -1293,7 +1295,7 @@ func (h *chatLocalHandler) CancelPost(ctx context.Context, outboxID chat1.Outbox
 	}
 
 	uid := h.G().Env.GetUID()
-	outbox := storage.NewOutbox(h.G(), uid.ToBytes(), h.getSecretUI)
+	outbox := storage.NewOutbox(h.G(), uid.ToBytes())
 	if err = outbox.RemoveMessage(ctx, outboxID); err != nil {
 		return err
 	}
@@ -1309,7 +1311,7 @@ func (h *chatLocalHandler) RetryPost(ctx context.Context, outboxID chat1.OutboxI
 
 	// Mark as retry in the outbox
 	uid := h.G().Env.GetUID()
-	outbox := storage.NewOutbox(h.G(), uid.ToBytes(), h.getSecretUI)
+	outbox := storage.NewOutbox(h.G(), uid.ToBytes())
 	if err = outbox.RetryMessage(ctx, outboxID); err != nil {
 		return err
 	}
